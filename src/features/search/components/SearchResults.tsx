@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { gsap } from "gsap";
 
 import type { SearchResult } from "../types/search";
@@ -12,6 +12,10 @@ export default function SearchResults({
   results,
 }: SearchResultsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const resultKey = useMemo(
+    () => results.map((result) => result.peringkat).join(","),
+    [results]
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -40,7 +44,7 @@ export default function SearchResults({
     }, container);
 
     return () => ctx.revert();
-  }, [results]);
+  }, [resultKey]);
 
   return (
     <div ref={containerRef} className="space-y-4">

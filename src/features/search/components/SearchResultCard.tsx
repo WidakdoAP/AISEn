@@ -14,6 +14,9 @@ export default function SearchResultCard({
   const date = result.date?.trim() || "Tanggal tidak tersedia";
   const url = result.url?.trim();
   const hasPublicationUrl = Boolean(url && /^https?:\/\//i.test(url));
+  const matchPercentage = Number.isFinite(result.skor)
+    ? Math.round(Math.max(0, Math.min(100, (1 - result.skor) * 100)))
+    : null;
 
   return (
     <article
@@ -26,9 +29,11 @@ export default function SearchResultCard({
           <span>Dokumen #{result.peringkat}</span>
         </div>
 
-        <span className="academia-score">
-          Relevansi {result.skor.toFixed(4)}
-        </span>
+        {matchPercentage !== null && (
+          <span className="academia-score">
+            Kecocokan {matchPercentage}%
+          </span>
+        )}
       </div>
 
       <h2 className="academia-result-title mt-5">
