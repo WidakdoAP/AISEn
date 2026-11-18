@@ -1,7 +1,6 @@
 import { mockAISummary } from "../features/search/mocks/searchMock";
 import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
-
 import {
   useLocation,
   useSearchParams,
@@ -19,8 +18,7 @@ import {
 
 import SearchBar from "../features/search/components/SearchBar";
 import SearchResults from "../features/search/components/SearchResults";
-import { searchDocuments } from "../features/search/services/searchApi";
-import type { SearchResult } from "../features/search/types/search";
+import { useSearchDocuments } from "../features/search/hooks/useSearchDocuments";
 
 // Wrapper: remount halaman ketika URL pencarian berubah.
 export default function SearchPage() {
@@ -37,16 +35,19 @@ function SearchPageContent() {
   const query = searchParams.get("q") ?? "";
 
   const [input, setInput] = useState(query);
-  const [results, setResults] = useState<SearchResult[]>([]);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(Boolean(query.trim()));
-  const [error, setError] = useState<string | null>(null);
   const [relevance, setRelevance] = useState(0.5);
+  const [debouncedRelevance, setDebouncedRelevance] = useState(0.5);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  
+
   const optionsRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
   const resultsPerPage = 10;
+
+  const { state } = useSearchDocuments(query, debouncedRelevance);
+  const loading = state.status === "loading";
+  const error = state.status === "error" ? state.error.message : null;
+  const results = state.status === "success" ? state.data.results : [];
   const totalPages = Math.max(1, Math.ceil(results.length / resultsPerPage));
   const pageStart = (page - 1) * resultsPerPage;
   const paginatedResults = results.slice(pageStart, pageStart + resultsPerPage);
@@ -74,6 +75,15 @@ function SearchPageContent() {
   }, []);
 
   useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedRelevance(relevance);
+      setPage(1);
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [relevance]);
+
+  useEffect(() => {
     const dropdown = optionsRef.current;
   
     if (!dropdown || !optionsOpen) return;
@@ -98,53 +108,7 @@ function SearchPageContent() {
   
     return () => ctx.revert();
   }, [optionsOpen]);
-  
-  useEffect(() => {
-    if (!query.trim()) {
-      return;
-    }
 
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => {
-      async function fetchResults() {
-        setLoading(true);
-        setError(null);
-
-        try {
-          const data = await searchDocuments(query, relevance, controller.signal);
-
-          if (!controller.signal.aborted) {
-            setPage(1);
-            setResults(data.results);
-          }
-        } catch (err) {
-          if (err instanceof DOMException && err.name === "AbortError") {
-            return;
-          }
-
-          if (!controller.signal.aborted) {
-            setError(
-              err instanceof Error
-                ? err.message
-                : "Terjadi kesalahan saat mencari dokumen."
-            );
-            setResults([]);
-          }
-        } finally {
-          if (!controller.signal.aborted) {
-            setLoading(false);
-          }
-        }
-      }
-
-      void fetchResults();
-    }, 350);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [query, relevance]);
 
   function handleSearch() {
     const trimmedInput = input.trim();

@@ -1,52 +1,22 @@
-import type { SearchResponse } from "../types/search";
+import { apiClient } from "../../../app/api";
+import type {
+  SearchDocumentsParams,
+  SearchRequestBody,
+  SearchResponse,
+} from "../types/search";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const SEARCH_PATH = "/search";
+const DEFAULT_MAX_THRESHOLD = 0.5;
 
-export async function searchDocuments(
-  query: string,
-  maxThreshold: number,
-  signal?: AbortSignal
+export function searchDocuments(
+  params: SearchDocumentsParams
 ): Promise<SearchResponse> {
-  let response: Response;
+  const { signal, max_threshold, query } = params;
 
-  try {
-    response = await fetch(`${API_BASE_URL}/search`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query,
-        max_threshold: maxThreshold,
-      }),
-      signal,
-    });
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      throw error;
-    }
+  const body: SearchRequestBody = {
+    query,
+    max_threshold: max_threshold ?? DEFAULT_MAX_THRESHOLD,
+  };
 
-    throw new Error("Tidak dapat terhubung ke server pencarian.");
-  }
-
-  if (!response.ok) {
-    let message = "Pencarian gagal. Coba lagi nanti.";
-
-    try {
-      const body = (await response.json()) as { detail?: string };
-      if (body.detail) {
-        message = body.detail;
-      }
-    } catch {
-      message = `Pencarian gagal (${response.status}).`;
-    }
-
-    throw new Error(message);
-  }
-
-  try {
-    return (await response.json()) as SearchResponse;
-  } catch {
-    throw new Error("Server mengirim respons pencarian yang tidak valid.");
-  }
+  return apiClient.post<SearchResponse>(SEARCH_PATH, body, { signal });
 }
