@@ -8,6 +8,13 @@ interface SearchResultCardProps {
 export default function SearchResultCard({
   result,
 }: SearchResultCardProps) {
+  const title = result.judul?.trim() || "Judul tidak tersedia";
+  const authors = result.penulis?.trim() || "Penulis tidak tersedia";
+  const description = result.deskripsi?.trim() || "Deskripsi tidak tersedia";
+  const date = result.date?.trim() || "Tanggal tidak tersedia";
+  const url = result.url?.trim();
+  const hasPublicationUrl = Boolean(url && /^https?:\/\//i.test(url));
+
   return (
     <article
       data-result-card
@@ -25,29 +32,33 @@ export default function SearchResultCard({
       </div>
 
       <h2 className="academia-result-title mt-5">
-        {result.judul}
+        {title}
       </h2>
 
       <div className="academia-result-meta mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span>{result.penulis}</span>
+        <span>{authors}</span>
         <span className="text-[#b18b50]">•</span>
-        <span>{result.date || "Tanggal tidak tersedia"}</span>
+        <span>{date}</span>
       </div>
 
       <p className="academia-result-description mt-5 line-clamp-4">
-        {result.deskripsi}
+        {description}
       </p>
 
       <div className="mt-5 border-t border-[#e5e0d4] pt-4">
-        <a
-          href={result.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="academia-link"
-        >
-          Baca publikasi
-          <ExternalLink className="h-4 w-4" />
-        </a>
+        {hasPublicationUrl ? (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="academia-link"
+          >
+            Baca publikasi
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        ) : (
+          <span className="text-sm text-[#85877f]">URL publikasi tidak tersedia</span>
+        )}
       </div>
     </article>
   );

@@ -1,4 +1,4 @@
-import { mockSearchResults, mockAISummary } from "../features/search/mocks/searchMock";
+import { mockAISummary } from "../features/search/mocks/searchMock";
 import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
 
@@ -13,6 +13,8 @@ import {
   BookOpen,
   Settings,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import SearchBar from "../features/search/components/SearchBar";
@@ -36,13 +38,18 @@ function SearchPageContent() {
 
   const [input, setInput] = useState(query);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(Boolean(query.trim()));
   const [error, setError] = useState<string | null>(null);
-  const [relevance, setRelevance] = useState(50);
+  const [relevance, setRelevance] = useState(0.5);
   const [optionsOpen, setOptionsOpen] = useState(false);
   
   const optionsRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
+  const resultsPerPage = 10;
+  const totalPages = Math.max(1, Math.ceil(results.length / resultsPerPage));
+  const pageStart = (page - 1) * resultsPerPage;
+  const paginatedResults = results.slice(pageStart, pageStart + resultsPerPage);
 
   useEffect(() => {
     const page = pageRef.current;
@@ -92,52 +99,52 @@ function SearchPageContent() {
     return () => ctx.revert();
   }, [optionsOpen]);
   
-  // Fetch results whenever URL query changes.
   useEffect(() => {
-    if (!query.trim()) return;
-  
-    const controller = new AbortController();
+    if (!query.trim()) {
+      return;
+    }
 
-    const USE_MOCK_DATA = true;
-  
-    async function fetchResults() {
-      setLoading(true);
-      setError(null);
-  
-      try {
-        const data = USE_MOCK_DATA
-          ? mockSearchResults
-          : await searchDocuments(query, controller.signal);
-  
-        if (!controller.signal.aborted) {
-          setResults(data);
-        }
-      } catch (err) {
-        if (
-          err instanceof Error &&
-          err.name === "AbortError"
-        ) {
-          return;
-        }
-  
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Terjadi kesalahan saat mencari dokumen."
-        );
-  
-        setResults([]);
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      async function fetchResults() {
+        setLoading(true);
+        setError(null);
+
+        try {
+          const data = await searchDocuments(query, relevance, controller.signal);
+
+          if (!controller.signal.aborted) {
+            setPage(1);
+            setResults(data.results);
+          }
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") {
+            return;
+          }
+
+          if (!controller.signal.aborted) {
+            setError(
+              err instanceof Error
+                ? err.message
+                : "Terjadi kesalahan saat mencari dokumen."
+            );
+            setResults([]);
+          }
+        } finally {
+          if (!controller.signal.aborted) {
+            setLoading(false);
+          }
         }
       }
-    }
-  
-    fetchResults();
-  
-    return () => controller.abort();
-  }, [query]);
+
+      void fetchResults();
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [query, relevance]);
 
   function handleSearch() {
     const trimmedInput = input.trim();
@@ -237,33 +244,40 @@ function SearchPageContent() {
                   </div>
           
                   <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <label htmlFor="relevance-slider">
-                        Relevansi
-                      </label>
-          
-                      <span className="academia-relevance-value">
-                        {relevance}%
-                      </span>
+                    <p className="mb-3 text-sm font-semibold text-[#243746]">
+                      Relevansi data
+                    </p>
+
+                    <div className="academia-relevance-options" role="group" aria-label="Relevansi data">
+                      <button
+                        type="button"
+                        onClick={() => setRelevance(0.6)}
+                        aria-pressed={relevance === 0.6}
+                        className={relevance === 0.6 ? "is-active" : ""}
+                      >
+                        Lemah
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRelevance(0.5)}
+                        aria-pressed={relevance === 0.5}
+                        className={relevance === 0.5 ? "is-active" : ""}
+                      >
+                        Sedang
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRelevance(0.4)}
+                        aria-pressed={relevance === 0.4}
+                        className={relevance === 0.4 ? "is-active" : ""}
+                      >
+                        Tinggi
+                      </button>
                     </div>
-          
-                    <input
-                      id="relevance-slider"
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={relevance}
-                      onChange={(event) =>
-                        setRelevance(Number(event.target.value))
-                      }
-                      className="academia-range w-full"
-                    />
-          
-                    <div className="mt-2 flex justify-between text-xs">
-                      <span>Lebih luas</span>
-                      <span>Lebih spesifik</span>
-                    </div>
+
+                    <p className="mt-3 text-xs text-[#85877f]">
+                      Hasil diperbarui otomatis saat relevansi diubah.
+                    </p>
                   </div>
           
                   <div className="academia-options-divider" />
@@ -398,20 +412,53 @@ function SearchPageContent() {
               </div>
             )}
 
-            {/* Results */}
             {!loading && !error && results.length > 0 && (
-              <SearchResults results={results} />
+              <>
+                <SearchResults results={paginatedResults} />
+
+                {totalPages > 1 && (
+                  <nav
+                    className="academia-pagination mt-8"
+                    aria-label="Halaman hasil pencarian"
+                  >
+                    <p className="academia-pagination-summary">
+                      Menampilkan {pageStart + 1}–{Math.min(pageStart + resultsPerPage, results.length)} dari {results.length} dokumen
+                    </p>
+
+                    <div className="academia-pagination-controls">
+                      <button
+                        type="button"
+                        onClick={() => setPage((currentPage) => currentPage - 1)}
+                        disabled={page === 1}
+                        aria-label="Halaman sebelumnya"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span>Sebelumnya</span>
+                      </button>
+
+                      <span className="academia-pagination-page" aria-current="page">
+                        {page} / {totalPages}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => setPage((currentPage) => currentPage + 1)}
+                        disabled={page === totalPages}
+                        aria-label="Halaman berikutnya"
+                      >
+                        <span>Berikutnya</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </nav>
+                )}
+              </>
             )}
           </>
         )}
       </section>
 
-      {/* Footer */}
-      <footer data-animate className="academia-footer mt-auto">
-         <div className="mx-auto max-w-5xl px-4 py-6 text-center text-xs sm:px-6">
-          Footer
-        </div>
-      </footer>
+
     </main>
   );
 }

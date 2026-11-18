@@ -8,4 +8,9 @@ export interface SearchResult {
   date: string;
 }
 
-export type SearchResponse = SearchResult[];
+export interface SearchResponse {
+  query: string;
+  max_threshold: number;
+  count: number;
+  results: SearchResult[];
+}
