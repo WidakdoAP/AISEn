@@ -1,7 +1,6 @@
-import { mockSearchResults, mockAISummary } from "../features/search/mocks/searchMock";
+import { mockAISummary } from "../features/search/mocks/searchMock";
 import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
-
 import {
   useLocation,
   useSearchParams,
@@ -17,8 +16,7 @@ import {
 
 import SearchBar from "../features/search/components/SearchBar";
 import SearchResults from "../features/search/components/SearchResults";
-import { searchDocuments } from "../features/search/services/searchApi";
-import type { SearchResult } from "../features/search/types/search";
+import { useSearchDocuments } from "../features/search/hooks/useSearchDocuments";
 
 // Wrapper: remount halaman ketika URL pencarian berubah.
 export default function SearchPage() {
@@ -35,14 +33,18 @@ function SearchPageContent() {
   const query = searchParams.get("q") ?? "";
 
   const [input, setInput] = useState(query);
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(Boolean(query.trim()));
-  const [error, setError] = useState<string | null>(null);
   const [relevance, setRelevance] = useState(50);
   const [optionsOpen, setOptionsOpen] = useState(false);
-  
+
   const optionsRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
+
+  // State jaringan dikontrol sepenuhnya oleh hook (discriminated union).
+  const { state } = useSearchDocuments(query);
+
+  const loading = state.status === "loading";
+  const error = state.status === "error" ? state.error.message : null;
+  const results = state.status === "success" ? state.data.results : [];
 
   useEffect(() => {
     const page = pageRef.current;
@@ -91,53 +93,6 @@ function SearchPageContent() {
   
     return () => ctx.revert();
   }, [optionsOpen]);
-  
-  // Fetch results whenever URL query changes.
-  useEffect(() => {
-    if (!query.trim()) return;
-  
-    const controller = new AbortController();
-
-    const USE_MOCK_DATA = true;
-  
-    async function fetchResults() {
-      setLoading(true);
-      setError(null);
-  
-      try {
-        const data = USE_MOCK_DATA
-          ? mockSearchResults
-          : await searchDocuments(query, controller.signal);
-  
-        if (!controller.signal.aborted) {
-          setResults(data);
-        }
-      } catch (err) {
-        if (
-          err instanceof Error &&
-          err.name === "AbortError"
-        ) {
-          return;
-        }
-  
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Terjadi kesalahan saat mencari dokumen."
-        );
-  
-        setResults([]);
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      }
-    }
-  
-    fetchResults();
-  
-    return () => controller.abort();
-  }, [query]);
 
   function handleSearch() {
     const trimmedInput = input.trim();
