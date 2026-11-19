@@ -49,7 +49,12 @@ export default function SearchResults({
   return (
     <div ref={containerRef} className="space-y-4">
       {results.map((result) => (
-        <div key={result.peringkat} data-result-card>
+        <div
+          key={result.peringkat}
+          id={`document-${result.peringkat}`}
+          tabIndex={-1}
+          data-result-card
+        >
           <SearchResultCard result={result} />
         </div>
       ))}

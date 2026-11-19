@@ -1,5 +1,4 @@
-import { mockAISummary } from "../features/search/mocks/searchMock";
-import { useEffect, useState, useRef } from "react";
+import { Fragment, useEffect, useState, useRef, type ReactNode } from "react";
 import { gsap } from "gsap";
 import {
   useLocation,
@@ -19,6 +18,72 @@ import {
 import SearchBar from "../features/search/components/SearchBar";
 import SearchResults from "../features/search/components/SearchResults";
 import { useSearchDocuments } from "../features/search/hooks/useSearchDocuments";
+
+function getJournalYearRange(results: { date: string | null | undefined }[]): string | null {
+  const years = results
+    .map((result) => result.date?.match(/^(\d{4})(?:-\d{1,2}){0,2}$/)?.[1])
+    .filter((year): year is string => year !== undefined)
+    .map(Number)
+    .filter((year) => year >= 1000 && year <= 9999);
+
+  if (years.length === 0) {
+    return null;
+  }
+
+  const firstYear = Math.min(...years);
+  const lastYear = Math.max(...years);
+  return firstYear === lastYear ? String(firstYear) : `${firstYear}–${lastYear}`;
+}
+
+function renderSummaryText(
+  text: string,
+  onCitationClick: (rank: number) => void
+): ReactNode[] {
+  return text
+    .split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[\d+(?:\s*,\s*\d+)*\])/)
+    .map((part, index) => {
+      if (/^\*\*[^*]+\*\*$/.test(part)) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+
+      if (/^\*[^*]+\*$/.test(part)) {
+        return <em key={index}>{part.slice(1, -1)}</em>;
+      }
+
+      const citation = /^\[(\d+(?:\s*,\s*\d+)*)\]$/.exec(part);
+
+      if (citation) {
+        const ranks = citation[1].split(",").map((rank) => Number(rank.trim()));
+
+        return (
+          <Fragment key={index}>
+            {ranks.map((rank, rankIndex) => (
+              <Fragment key={rank}>
+                {rankIndex > 0 && " "}
+                <button
+                  type="button"
+                  className="academia-ai-citation"
+                  onClick={() => onCitationClick(rank)}
+                  aria-label={`Buka dokumen ${rank}`}
+                >
+                  [{rank}]
+                </button>
+              </Fragment>
+            ))}
+          </Fragment>
+        );
+      }
+
+      return <Fragment key={index}>{part}</Fragment>;
+    });
+}
+
+function scrollToDocument(rank: number) {
+  const target = document.getElementById(`document-${rank}`);
+
+  target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  target?.focus({ preventScroll: true });
+}
 
 // Wrapper: remount halaman ketika URL pencarian berubah.
 export default function SearchPage() {
@@ -42,12 +107,15 @@ function SearchPageContent() {
 
   const optionsRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
+  const [pendingCitation, setPendingCitation] = useState<number | null>(null);
   const resultsPerPage = 10;
 
   const { state } = useSearchDocuments(query, debouncedRelevance);
   const loading = state.status === "loading";
   const error = state.status === "error" ? state.error.message : null;
-  const results = state.status === "success" ? state.data.results : [];
+  const response = state.status === "success" ? state.data : null;
+  const results = response?.results ?? [];
+  const journalYearRange = getJournalYearRange(results);
   const totalPages = Math.max(1, Math.ceil(results.length / resultsPerPage));
   const pageStart = (page - 1) * resultsPerPage;
   const paginatedResults = results.slice(pageStart, pageStart + resultsPerPage);
@@ -84,6 +152,14 @@ function SearchPageContent() {
   }, [relevance]);
 
   useEffect(() => {
+    if (pendingCitation === null) {
+      return;
+    }
+
+    scrollToDocument(pendingCitation);
+  }, [pendingCitation, page]);
+
+  useEffect(() => {
     const dropdown = optionsRef.current;
   
     if (!dropdown || !optionsOpen) return;
@@ -109,6 +185,23 @@ function SearchPageContent() {
     return () => ctx.revert();
   }, [optionsOpen]);
 
+
+  const summarySections = response?.ringkasan
+    .split(/\n{2,}/)
+    .map((section) => section.trim())
+    .filter(Boolean) ?? [];
+
+  function handleCitationClick(rank: number) {
+    const targetPage = Math.ceil(rank / resultsPerPage);
+
+    if (targetPage === page) {
+      scrollToDocument(rank);
+      return;
+    }
+
+    setPendingCitation(rank);
+    setPage(targetPage);
+  }
 
   function handleSearch() {
     const trimmedInput = input.trim();
@@ -215,9 +308,9 @@ function SearchPageContent() {
                     <div className="academia-relevance-options" role="group" aria-label="Relevansi data">
                       <button
                         type="button"
-                        onClick={() => setRelevance(0.6)}
-                        aria-pressed={relevance === 0.6}
-                        className={relevance === 0.6 ? "is-active" : ""}
+                        onClick={() => setRelevance(0.4)}
+                        aria-pressed={relevance === 0.4}
+                        className={relevance === 0.4 ? "is-active" : ""}
                       >
                         Lemah
                       </button>
@@ -231,9 +324,9 @@ function SearchPageContent() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setRelevance(0.4)}
-                        aria-pressed={relevance === 0.4}
-                        className={relevance === 0.4 ? "is-active" : ""}
+                        onClick={() => setRelevance(0.6)}
+                        aria-pressed={relevance === 0.6}
+                        className={relevance === 0.6 ? "is-active" : ""}
                       >
                         Tinggi
                       </button>
@@ -263,37 +356,42 @@ function SearchPageContent() {
             onSubmit={handleSearch}
             onClear={handleClearSearch}
           />
-      
-          {/* AI Summary */}
-          {!loading && !error && query && results.length > 0 && (
-            <div className="academia-ai-summary mt-6">
+
+          {response?.status === "full" && response.ringkasan && (
+            <section className="academia-ai-summary mt-6 -mb-8" aria-labelledby="ai-summary-title">
               <div className="academia-ai-summary-header">
                 <div className="academia-ai-icon">
                   <BookOpen className="h-5 w-5" />
                 </div>
-      
-                <div>
-                  <h3 className="font-semibold">
-                    {mockAISummary.title}
-                  </h3>
-      
-                  <p className="text-xs">
-                    AI-generated overview · Demo data
+
+                <div className="min-w-0">
+                  <p className="academia-ai-eyebrow">AI overview</p>
+                  <h3 id="ai-summary-title">Ringkasan penelitian</h3>
+                  <p>
+                    Berdasarkan {Math.min(results.length, 5)} jurnal paling relevan
+                    {journalYearRange ? ` · ${journalYearRange}` : ""}
                   </p>
                 </div>
               </div>
-      
-              <p className="academia-ai-summary-content">
-                {mockAISummary.content}
-              </p>
-      
-              <div className="academia-ai-keywords">
-                {mockAISummary.keywords.map((keyword) => (
-                  <span key={keyword}>
-                    {keyword}
-                  </span>
+
+              <div className="academia-ai-summary-content">
+                {summarySections.map((section, index) => (
+                  <p key={`${index}-${section.slice(0, 24)}`}>
+                    {renderSummaryText(section, handleCitationClick)}
+                  </p>
                 ))}
               </div>
+
+              <div className="academia-ai-footer">
+                <span className="academia-ai-source-dot" aria-hidden="true" />
+                Referensi [n] merujuk ke nomor dokumen pada hasil pencarian.
+              </div>
+            </section>
+          )}
+
+          {response?.status === "list_only" && response.ringkasan_error && (
+            <div className="academia-ai-notice mt-6" role="status">
+              Ringkasan AI belum tersedia: {response.ringkasan_error}
             </div>
           )}
         </div>
@@ -371,7 +469,7 @@ function SearchPageContent() {
                 </h3>
 
                 <p className="mt-2 text-sm text-slate-500">
-                  Coba gunakan kata kunci atau deskripsi yang berbeda.
+                  {response?.arahan?.join(" ") || "Coba gunakan kata kunci atau deskripsi yang berbeda."}
                 </p>
               </div>
             )}
@@ -417,7 +515,7 @@ function SearchPageContent() {
                   </nav>
                 )}
               </>
-            )}
+              )}
           </>
         )}
       </section>

@@ -15,7 +15,7 @@ export default function SearchResultCard({
   const url = result.url?.trim();
   const hasPublicationUrl = Boolean(url && /^https?:\/\//i.test(url));
   const matchPercentage = Number.isFinite(result.skor)
-    ? Math.round(Math.max(0, Math.min(100, (1 - result.skor) * 100)))
+    ? Math.round(Math.max(0, Math.min(100, result.skor * 100)))
     : null;
 
   return (

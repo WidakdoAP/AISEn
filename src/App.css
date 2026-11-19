@@ -144,11 +144,16 @@
 }
 
 /* Dropdown */
+.academia-search-section {
+  position: relative;
+  z-index: 30;
+}
+
 .academia-options-dropdown {
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
-  z-index: 100;
+  z-index: 999;
   width: min(300px, calc(100vw - 32px));
   padding: 20px;
   background-color: #fffefa;
@@ -241,62 +246,151 @@
 
 /* AI Summary */
 .academia-ai-summary {
-  padding: 22px;
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-gold);
-  border-radius: 12px;
-  background: var(--color-surface);
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+  border: 1px solid var(--border);
+
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.academia-ai-summary::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  content: "";
+  background: linear-gradient(90deg, var(--burgundy), var(--gold), var(--gold-light));
 }
 
 .academia-ai-summary-header {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
 }
 
 .academia-ai-icon {
   display: flex;
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  border: 1px solid var(--gold-light);
   border-radius: 10px;
-  background: var(--color-gold-soft);
-  color: var(--color-primary);
+  background: #f8f2e7;
+  color: var(--burgundy);
+}
+
+.academia-ai-eyebrow {
+  margin: 0 0 3px;
+  color: var(--burgundy);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .academia-ai-summary-header h3 {
-  color: var(--color-heading);
-  font-size: 15px;
+  margin: 0;
+  color: var(--text-heading);
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
-.academia-ai-summary-header p {
-  margin-top: 3px;
-  color: var(--color-muted);
+.academia-ai-summary-header p:not(.academia-ai-eyebrow) {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .academia-ai-summary-content {
-  color: var(--color-text);
+  width: 100%;
+  color: var(--text);
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.85;
 }
 
-.academia-ai-keywords {
+.academia-ai-summary-content p + p {
+  margin-top: 14px;
+}
+
+.academia-ai-summary-content strong {
+  color: var(--text-heading);
+  font-weight: 700;
+}
+
+.academia-ai-summary-content em {
+  color: var(--forest);
+}
+
+.academia-ai-citation {
+  display: inline-block;
+  margin-inline: 2px;
+  border: 0;
+  border-radius: 4px;
+  padding: 0 5px;
+  background: #f1eadc;
+  color: var(--burgundy);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.55;
+  text-decoration: none;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+button.academia-ai-citation:hover {
+  background: var(--burgundy);
+  color: var(--text-inverse);
+}
+
+button.academia-ai-citation:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+[data-result-card]:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 5px;
+}
+
+.academia-ai-footer {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  margin-top: 18px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.academia-ai-keywords span {
-  padding: 6px 11px;
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  background: var(--color-surface-soft);
-  color: var(--color-primary);
-  font-size: 12px;
+.academia-ai-source-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.academia-ai-notice {
+  border: 1px solid var(--gold-light);
+  border-left: 3px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .academia-search {

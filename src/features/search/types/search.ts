@@ -25,16 +25,22 @@ export interface SearchRequestBody {
   max_threshold: number;
 }
 
+export type SearchStatus = "full" | "list_only" | "no_results";
+
 /** Respons 200 `POST /search`. */
 export interface SearchResponse {
   query: string;
   max_threshold: number;
   count: number;
   results: SearchResult[];
+  status: SearchStatus;
+  ringkasan: string | null;
+  ringkasan_error: string | null;
+  arahan: string[];
 }
 
 export interface SearchDocumentsParams {
   query: string;
-  max_threshold?: number;
+  threshold?: number;
   signal?: AbortSignal;
 }

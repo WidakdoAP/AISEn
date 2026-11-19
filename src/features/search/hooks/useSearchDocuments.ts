@@ -14,13 +14,13 @@ import type { SearchResponse } from "../types/search";
 
 export function useSearchDocuments(
   query: string,
-  maxThreshold?: number
+  threshold?: number
 ): UseRequestStateResult<SearchResponse> {
   const trimmedQuery = query.trim();
 
   return useRequestState<SearchResponse>(
     (signal) =>
-      searchDocuments({ query: trimmedQuery, max_threshold: maxThreshold, signal }),
-    { enabled: trimmedQuery.length > 0, key: [trimmedQuery, maxThreshold] }
+      searchDocuments({ query: trimmedQuery, threshold, signal }),
+    { enabled: trimmedQuery.length > 0, key: [trimmedQuery, threshold] }
   );
 }
