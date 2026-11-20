@@ -187,7 +187,7 @@ function SearchPageContent() {
 
 
   const summarySections = response?.ringkasan
-    .split(/\n{2,}/)
+    ?.split(/\n{2,}/)
     .map((section) => section.trim())
     .filter(Boolean) ?? [];
 
